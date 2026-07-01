@@ -1,0 +1,9 @@
+def calculate_eigenvalues(matrix: list[list[float|int]]) -> list[float]:
+  eigen_values = []
+  trace = matrix[0][0] + matrix[1][1]
+  determinant = matrix[0][0]*matrix[1][1] - matrix[0][1]*matrix[1][0]
+  if trace**2 - 4*determinant >= 0:
+    eigen_values.extend([(trace + (trace**2 - 4*determinant)**0.5)/2, (trace - (trace**2 - 4*determinant)**0.5)/2])
+    return eigen_values
+  else:
+    print("Eigen values are complex")
