@@ -1,0 +1,16 @@
+import numpy as np
+def determinant_4x4(a: list[list[int|float]]) -> float:
+	# Your recursive implementation here
+  B = []
+  for j in range(4):
+    B.append(np.delete(np.delete(a, 1, axis=0), j, axis=1))
+  M = []
+  for n in range(len(B)):
+    M.append(np.linalg.det(B[n]))
+  C = []
+  for m in range(len(M)):
+    C.append(((-1)**(m+1))*M[m])
+  det_A = 0
+  for k in range(4):
+    det_A += a[1][k]*C[k]
+  return det_A.round(3)
