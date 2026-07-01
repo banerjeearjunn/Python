@@ -1,0 +1,14 @@
+import numpy as np
+def calculate_matrix_mean(matrix: list[list[float]], mode: str) -> list[float]:
+  if mode.lower() == "row":
+    row_mean = []
+    for row in range(len(matrix)):
+       row_mean.append(np.average(np.array(matrix[row])))
+    return row_mean
+  if mode.lower() == "column":
+    col_mean = []
+    for row in range(len(np.transpose(matrix))):
+      transposed_matrix = np.transpose(matrix)
+      col_mean.append(np.average(transposed_matrix[row]))
+    return col_mean
+
