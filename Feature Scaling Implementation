@@ -1,0 +1,9 @@
+import numpy as np
+import pandas as pd
+def feature_scaling(data: np.ndarray) -> (np.ndarray, np.ndarray):
+    standardized_data=(data-np.mean(data, axis=0))/np.std(data, axis=0)
+    normalized_data=(data-np.min(data, axis=0))/(np.max(data, axis=0)-np.min(data, axis=0))
+    return tuple(np.round((standardized_data, normalized_data), 4).tolist())
+
+data = np.array([[1, 2], [3, 4], [5, 6]])
+feature_scaling(data)
