@@ -1,0 +1,8 @@
+import numpy as np
+
+def transform_matrix(A: list[list[int|float]], T: list[list[int|float]], S: list[list[int|float]]) -> list[list[int|float]]:
+  if np.isclose(np.linalg.det(T), 0) or np.isclose(np.linalg.det(S), 0):
+    return -1
+  else:
+    transformed_matrix = np.matmul(np.matmul(A, np.linalg.inv(T)), S)
+    return transformed_matrix
