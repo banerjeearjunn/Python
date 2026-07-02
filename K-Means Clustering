@@ -1,0 +1,57 @@
+import numpy as np
+
+def k_means_clustering(points: list[tuple[float, ...]], k: int, initial_centroids: list[tuple[float, ...]], max_iterations: int) -> list[tuple[float, ...]]:
+
+    points_array = np.array(points)
+    initial_centroids_array = np.array(initial_centroids)
+
+    for iteration in range(max_iterations-1):
+
+        centroids = initial_centroids_array
+
+        groups={i: [] for i in range(k)}
+
+        for point in points_array:
+            
+            distances = np.linalg.norm(centroids - point, axis=1)
+
+            min_distance_index = np.argmin(distances)
+
+            groups[min_distance_index].append(point)
+
+        new_centroids = []
+
+        for cluster_index in range(k):
+            if groups[cluster_index]:
+                new_centroids.append(np.mean(groups[cluster_index], axis = 0))
+
+            else: 
+                new_centroids.append(centroids[cluster_index])
+
+        centroids = np.array(new_centroids)
+
+     
+    final_centroids = [tuple(c) for c in centroids]
+    return final_centroids
+
+######################################################################################################
+# Supporting code to see how appending process is working in the dictionary groups:
+points = [(1, 2), (1, 4), (1, 0), (10, 2), (10, 4), (10, 0)]
+
+points_array = np.array(points)
+centroids =np.array([(1, 1), (10, 1)])
+
+groups={i: [] for i in range(2)}
+
+
+for point in points_array:
+
+    distances = np.linalg.norm(centroids - point, axis=1)
+    print(distances)
+    
+    min_distance_index = np.argmin(distances)
+    print(min_distance_index)
+
+    groups[min_distance_index].append(point)
+    print(groups)
+
