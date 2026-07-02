@@ -31,7 +31,7 @@ def k_means_clustering(points: list[tuple[float, ...]], k: int, initial_centroid
         centroids = np.array(new_centroids)
 
      
-    final_centroids = [tuple(c) for c in centroids]
+    final_centroids = [tuple(c) for c in centroids.round(4)]
     return final_centroids
 
 ######################################################################################################
