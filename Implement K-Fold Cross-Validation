@@ -1,0 +1,34 @@
+import numpy as np
+import random
+import math
+# np.random.seed(111) we are using rng
+
+
+def k_fold_cross_validation(n_samples: int, k: int = 5, shuffle: bool = True) -> list[tuple[list[int], list[int]]]:
+
+    sample = [x for x in np.arange(n_samples)]
+
+    #if shuffle:
+        #np.random.shuffle(sample) #no.random.shuffle and random.shuffle are different
+
+  #but it is better to use rng for shuffling/ random number generation etc
+
+    rng = np.random.default_rng(111)
+    if shuffle:
+        rng.shuffle(sample)
+
+    for iteration in range(k):
+
+        test_size = math.ceil(n_samples/k) 
+        train_teat_list = []
+
+        for i in range(0, n_samples, test_size):
+
+            test_indices = [x for x in sample[i:i+test_size]]
+
+            train_indices = [x for x in sample if x not in test_indices]
+
+            train_teat_list.append((train_indices, test_indices))
+    return train_teat_list
+
+k_fold_cross_validation(n_samples=10, k=2, shuffle=True)
