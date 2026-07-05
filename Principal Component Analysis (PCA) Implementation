@@ -1,0 +1,34 @@
+import numpy as np
+
+def pca(data: np.ndarray, k: int) -> np.ndarray:
+
+    data = data.astype(float) 
+    D = (data - np.mean(data, axis=0)) / np.std(data, axis=0)
+
+    # 2. Find the covariance matrix
+    D_cov = np.cov(D, rowvar=False) # rowvar=False means each column is a variable, each row is an observation
+
+    # 3. Calculate eigenvalues and eigenvectors
+    eigen_values, eigen_vectors = np.linalg.eigh(D_cov)     # np.eigh returns eigenvalues and eigenvectors in ascending order.
+
+
+    # 4. Sort eigenvalues (by absolute value, descending) and select top k eigenvectors
+    sorted_indices = np.argsort(np.abs(eigen_values))[::-1]
+
+    top_k_eigen_vectors = eigen_vectors[:, sorted_indices[:k]].round(4)
+
+    # 5. Apply sign normalization based on the first non-zero entry of each principal component
+    # Create a mutable copy to perform modifications.
+    normalized_principal_components = np.copy(top_k_eigen_vectors)
+
+    # Iterate through each of the k selected principal components (which are columns in this matrix)
+    for i in range(k):
+        current_pc_vector = normalized_principal_components[:, i] # Get the i-th principal component (a column vector)
+
+        # Find the index of the first non-zero entry in this vector using np.argmax
+        if np.any(current_pc_vector != 0): # Ensure the vector is not all zeros
+            idx_to_check = np.argmax(current_pc_vector != 0) # Get the index of the first non-zero entry
+            if current_pc_vector[idx_to_check] < 0:
+                normalized_principal_components[:, i] *= -1
+
+    return normalized_principal_components
