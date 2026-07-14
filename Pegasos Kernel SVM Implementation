@@ -1,0 +1,59 @@
+import numpy as np
+import math
+
+def pegasos_kernel_svm(data: np.ndarray, labels: np.ndarray, kernel='linear', lambda_val=0.01, iterations=100, sigma=1.0) -> tuple:
+
+    # The rows of the dataset represent the samples and the columns represent the features:
+    n_samples, n_features = data.shape
+
+    # Kernel Function:
+    # If the data points are linearly separable, use the dot product.
+    # In case the data points are not linearly separable, the idea is to gain linearly separation by mapping the data to a higher dimensional space.
+    # kernel function defines inner products in the transformed space.
+
+    def K(x1: np.ndarray, x2: np.ndarray) -> float:
+        if kernel.casefold() == "linear": # In case 
+            return np.dot(x1, x2)
+        elif kernel.casefold() == "rbf": # Radial Basis Function, the default choice for non-linear data. It can handle highly complex, overlapping, or circular data groupings.
+            return np.exp(-np.linalg.norm(x1 - x2)**2 / (2 * sigma**2))
+        return 0.0 # for unsupported values
+
+    # Initialization of weights & bias: 
+    w = np.zeros(n_samples)
+    b = 0.0
+
+    # Shuffle data indices at each iteration (or epoch) for stochastic gradient descent
+    sample_idx = np.arange(n_samples)
+
+    # Learning rate eta_t, for each iteration t_idx:
+    eta_t_listed = [1.0/(lambda_val*(t_idx+1)) for t_idx in range(iterations)]
+
+    # Iterate over t_idx
+    for t_idx in range(iterations):
+        
+        # Shuffle the sample:
+        np.random.shuffle(sample_idx)
+
+        # t-th learning rate is the t-th entry in the list eta_t_shecdule:
+        eta_t = eta_t_listed[t_idx]
+
+        # Iterate over each data point
+        for idx in sample_idx:
+            x_i = data[idx]
+            y_i = labels[idx]
+
+            # Define the decision function:
+            decesion_function = sum(labels[j]*w[j]*K(data[j], x_i) for j in range(n_samples)) + b
+
+            #Update the weights & biases:
+            if y_i*decesion_function < 1: # if the method misclassifies the sample point x_i,
+                w[idx] = (1-eta_t*lambda_val)*w[idx]+y_i*eta_t
+                b = b+y_i*eta_t
+            else: # if the method classifies the sample x_i point correctly:
+                w[idx] = (1-eta_t*lambda_val)*w[idx]
+
+            # Always keep the weights positive
+            w[idx] = max(0, w[idx])
+    return (w.round(4), b.round(4))
+
+pegasos_kernel_svm(data = np.array([[1, 2], [2, 3], [3, 1], [4, 1]]), labels = np.array([1, 1, -1, -1]), kernel = 'linear', lambda_val = 0.01, iterations = 100)
