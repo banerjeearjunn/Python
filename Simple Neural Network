@@ -1,0 +1,54 @@
+# Creating Linear Regression Model Class
+
+import torch
+
+#Define input size, hidden size & output size
+input_size = 2
+hidden_size = 4
+output_size = 1
+
+# Initialize weights & biases
+w1 = torch.rand(input_size, hidden_size, requires_grad = True) # Input to hidden weights
+b1 = torch.randn(hidden_size, requires_grad = True) # Hidden layer bias
+w2 = torch.randn(hidden_size, output_size, requires_grad = True) # Hidden to output weights
+b2 = torch.randn(output_size, requires_grad = True) # Output layer bias
+
+# Forward pass function
+def forward(x):
+    # Hidden layer computation
+    hidden = torch.matmul(x, w1)+b1
+    hidden = torch.relu(hidden)
+    # Output layer computation
+    output = torch.matmul(hidden, w2) + b2
+    return output
+
+# Example input
+x = torch.tensor([[1.0, 2.0]])  # Batch of 1 input with 2 features
+y = forward(x)
+print("Output without torch.nn:", y)
+
+# 2. Add Training Data & Learning Hyperparameters
+x = torch.tensor([[1.0, 2.0]])
+target = torch.tensor([[5.0]])  # The correct answer the network SHOULD predict
+learning_rate = 0.01
+
+for epoch in range(10):
+    prediction = forward(x)
+    loss = torch.mean((prediction-target)**2)
+    # Backpropagation: Calculate how to blame each weight for the mistake
+    loss.backward()
+
+    # Update Weights: Manually shift weights to reduce future mistakes
+    with torch.no_grad():
+        w1 -= learning_rate * w1.grad
+        b1 -= learning_rate * b1.grad
+        w2 -= learning_rate * w2.grad
+        b2 -= learning_rate * b2.grad
+
+        # Zero out the gradients so they don't accumulate in the next loop
+        w1.grad.zero_()
+        b1.grad.zero_()
+        w2.grad.zero_()
+        b2.grad.zero_()
+
+print("Final prediction after learning: ", forward(x).item())
