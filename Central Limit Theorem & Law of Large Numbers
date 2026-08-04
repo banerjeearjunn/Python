@@ -1,0 +1,64 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Bernoulli Distribution
+
+n_trials = 1
+p_success = 0.999
+# data_size = 1000
+
+rng = np.random.default_rng(111)
+
+population_mean = n_trials*p_success
+population_var = p_success*(1-p_success)
+
+# Law of Large Numbers for Bernoulli Distribution
+
+def lln_bern(size):
+
+    data = rng.binomial(n=n_trials, p= p_success, size=size)
+
+    cumulative_mean = np.cumsum(data)/np.arange(1, size+1, 1)
+    return plt.scatter(np.arange(0, size, 1), cumulative_mean, color = "red", s = 1)
+
+lln_bern(5000)
+
+# Central Limit Theorem for Bernoulli Distribution
+
+def clt(num_experiments, sample_size):
+    samples = rng.binomial(n = n_trials, p = p_success, size = (num_experiments, sample_size))
+
+    sample_means = samples.mean(axis = 1)
+    normalized_means = pow(sample_size, 0.5)*(sample_means-population_mean)
+
+    plt.hist(normalized_means, bins = 50, color = "red", edgecolor = "black", alpha = 0.8)
+
+clt(1000, 500)
+
+
+
+###################################################################################
+
+# Law of Large Numbers for Exponential Distribution
+
+def lln_exp(size):
+
+    data = rng.exponential(scale=2.0, size=size)
+
+
+    cumulative_mean = np.cumsum(data)/np.arange(1, size+1, 1)
+    return plt.scatter(np.arange(0, size, 1), cumulative_mean, color = "red", s = 1)
+
+lln_exp(10000)
+
+# Central Limit Theorem for Exponential Distribution
+
+def clt(num_experiments, sample_size):
+    samples = rng.exponential(scale=2.0, size=(num_experiments, sample_size))
+
+    sample_means = samples.mean(axis = 1)
+    normalized_means = pow(sample_size, 0.5)*(sample_means-population_mean)
+
+    plt.hist(normalized_means, bins = 50, color = "red", edgecolor = "black", alpha = 0.8)
+
+clt(1000, 500)
