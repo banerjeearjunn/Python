@@ -1,0 +1,62 @@
+import numpy as np
+from numpy import linalg as la
+
+rng = np.random.default_rng(111)
+
+# X is our data matrix with n samples and p features
+n, p = 5, 3
+X = rng.random(size = (n, p))*100
+print(f"Data matrix with {n} samples and {p} features:\n {X} \n")
+
+# Center the data:
+X -= X.mean(axis = 0)
+print(f"Centered data matrix:\n {X} \n")
+
+print("-"*15, "Principal Component Analysis of X", "-"*15)
+
+# Covariance matrix
+C = np.cov(X, rowvar = False)
+print(f"Covariance matrix of X:\n {C} \n")
+
+# eigen values & eigen vectors of the covariance matrix C
+l, principal_axes = la.eig(C)
+
+# Sort the eigen values in descending order
+idx_sort = l.argsort()[::-1]
+
+# Sort the eigen values & eigen vectors
+l, principal_axes = l[idx_sort], principal_axes[:,idx_sort]
+print(f"Eigen values in decreasing order:\n {l[idx_sort]} \n\n The corresponding principal axes:\n {principal_axes[:,idx_sort]} \n")
+
+# Finding the principal components
+principal_components = la.matmul(X, principal_axes)
+print(f"Principal components:\n {principal_components}\n")
+
+print("-"*15, "Singular Value Decomposition of X", "-"*15)
+
+U, s, Vt = la.svd(X, full_matrices = False)
+V = Vt.T
+S = np.diag(s)
+
+
+# Before assertion, let us adjust the signs in order to get rid of sign-problem
+def flip_signs(A, B):
+    signs = np.sign(A) * np.sign(B)
+    return A, B*signs
+
+# 1. columns of V are principal axes
+assert np.allclose(*flip_signs(V, principal_axes))
+
+# 2. columns of US are principal components
+assert np.allclose(*flip_signs(la.matmul(U, S), principal_components))
+
+# 3. singular values are related to the eigenvalues of covariance matrix
+assert np.allclose(pow(s, 2)/(n-1), l)
+
+# Dimensionality Reduction:
+k = 2
+PC_k = principal_components[:, 0:k]
+US_k = la.matmul(U[:, 0:k], S[0:k, 0:k])
+
+# 4. finally, the k principal components are precisely the first k columns of US, as the columns of US are the indeed the principal components, from (2)
+assert np.allclose(*flip_signs(PC_k, US_k))
