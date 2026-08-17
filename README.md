@@ -1,6 +1,6 @@
 # Logistic Regression using Gradient Descent vs Stochastic Gradient Descent vs Mini-Batch Gradient Descent
 
-
+```
 ################## Classification Using Logistic Regression ##################
 
 import torch
@@ -99,6 +99,7 @@ train_loss_values = []
 test_loss_values = []
 
 for epoch in range(epochs):
+
     epoch_count_gd.append(epoch)
 
     # Training
@@ -117,6 +118,10 @@ for epoch in range(epochs):
         train_loss.backward()
         optimizer_gd.step()
 
+    # Notice that the length of epoch_count is less than or equal to that of training loss values.
+    # epoch_count and training_loss_values have same length only in the case of gradient descent.
+    # This is because we are recording a loss for every single batch within an epoch.
+    # To fix this, we need to calculate the average training loss for all batches in an epoch and record that single value once per epoch.
     train_loss_values.append(np.mean(epoch_batch_loss))
 
     # Evaluation
@@ -252,9 +257,12 @@ plt.xlabel("Epoch")
 plt.ylabel("Loss")
 plt.legend()
 
-
+```
 
 ###################################################################
+
+
+Notice the significant improvement in the test loss values:
 
 ################## Output ##################
 
