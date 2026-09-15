@@ -13,27 +13,30 @@ X_test = np.array([[2.5, 3.5], [4.5, 5.5]])
 `k = 3`
 
 # Make prediction
-
-`predictions = []`
-`for x_test in X_test:`
-    ### Calculate distance between the x_test point and all data points in X_train
-    `distances = [np.linalg.norm(x_test - x_train) for x_train in X_train]`
-    ### Sort the data points by distances of the K nearest neighbours
-    `k_indices = np.argsort(distances)[:k]`
-    ### Get the target values of the K nearest neighbours
-    `k_nearest_neighbours = [y_train[i] for i in k_indices]`
-    ### Calculate the regression prediction as the mean of the target values of the K neighbours
-    ### Give more weights on the nearer points, while the ferther points get less weights
-    ```weights = distances[:k]
+```
+predictions = []
+for x_test in X_test:
+```
+### Calculate distance between the x_test point and all data points in X_train
+    distances = [np.linalg.norm(x_test - x_train) for x_train in X_train]
+### Sort the data points by distances of the K nearest neighbours
+    k_indices = np.argsort(distances)[:k]
+### Get the target values of the K nearest neighbours
+    k_nearest_neighbours = [y_train[i] for i in k_indices]
+### Calculate the regression prediction as the mean of the target values of the K neighbours
+### Give more weights on the nearer points, while the ferther points get less weights
+```
+    weights = distances[:k]
     prediction = np.average(k_nearest_neighbours, weights = weights)
-    predictions.append(prediction)```
+    predictions.append(prediction)
+```
 
 # Plot the training data
 `plt.scatter(X_train[:,0], y_train, label = "Training Data", color = "blue")`
 
 # Plot the test data and their predicted labels
-`plt.scatter(X_test[:,0], predictions, label = "Test Predictions", color = "red", marker = "x")`
 ```
+plt.scatter(X_test[:,0], predictions, label = "Test Predictions", color = "red", marker = "x")
 plt.xlabel("X Values")
 plt.ylabel("Y Values")
 plt.legend()
