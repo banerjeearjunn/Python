@@ -1,0 +1,91 @@
+# Decision Tree Regression
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.tree import DecisionTreeRegressor
+!pip install optuna
+import optuna
+
+# Data Preparation
+x = np.arange(0, 50, 1)
+x = pd.DataFrame({'x': x})
+
+rng = np.random.default_rng(42)
+
+y1 = rng.uniform(10, 15, size = 10)
+y2 = rng.uniform(20, 25, size = 10)
+y3 = rng.uniform(0, 5, size = 10)
+y4 = rng.uniform(30, 32, size = 10)
+y5 = rng.uniform(13, 17, size = 10)
+
+
+y = np.hstack((y1, y2, y3, y4, y5))
+
+# Data Plotting
+plt.figure(figsize = (8, 6))
+plt.title("Data")
+plt.scatter(x, y, color = "blue", label = "Data Points")
+plt.legend()
+
+# Train the Stump & Predict (i.e. we keep our regressors as simple/biased as possible, still they should be weak learners i.e. better than flipping coin.)
+clf = DecisionTreeRegressor(max_depth = 1)
+model = clf.fit(x, y)
+prediction = clf.predict(x)
+pred = model.predict(x)
+
+
+# Plot the Prediction of the Stump
+plt.title("Prediction by Tree of Depth 1")
+plt.figure(figsize = (8, 6))
+plt.scatter(x, y, color = "blue", label = "Data Points")
+plt.plot(x, prediction, c = "red", label = "Prediction on Data Points")
+plt.legend()
+
+# Notice that if we set the depth of the tree very high, it would have high variance (overfit)
+clf_hv= DecisionTreeRegressor(max_depth = 10)
+model_hv = clf_hv.fit(x, y)
+prediction_hv = clf_hv.predict(x)
+test_point = [[5.9]]
+prediction_on_test_point = clf_hv.predict(test_point)
+
+plt.title("Prediction on unseen data")
+plt.figure(figsize = (8, 6))
+plt.title("Predict on a Test Point")
+plt.scatter(x, y, label = "Data Points")
+plt.plot(x, prediction_hv, c = "red")
+plt.scatter(test_point, prediction_on_test_point, c = "black", marker = 'x', label = "Test Point")
+plt.legend()
+
+
+# Implementing Gradient Boosting
+y_i = y.copy()
+
+# Initialize Error = 0
+e_i = 0
+
+# Initialize Prediction with Average
+prediction_t = np.mean(y_i)
+
+# Learning Rate
+lr = 0.3
+
+
+# Iterate
+
+iterations = 100
+for iteration in range(iterations):
+    clf = DecisionTreeRegressor(max_depth = 1)
+    clf.fit(x, y_i)
+    prediction = clf.predict(x)
+    prediction_t = prediction_t + lr * prediction
+    e_i = y - prediction_t  # Get the errors for the objective of the next epoch, so that we can learn from our previous mistakes, which is the core idea of Boosting.
+    y_i = e_i
+
+# Plot our progress after every 10 iterations
+    if iteration%10 == 0:
+        plt.figure(figsize = (8, 6))
+        plt.plot(x, prediction_t, c = "red")
+        plt.scatter(x, y, color = "blue")
+        plt.title(f"Iteration: {iteration}")
+
