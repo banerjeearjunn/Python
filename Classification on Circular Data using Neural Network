@@ -1,0 +1,290 @@
+
+################# Classification on Circular Data #################
+
+
+################# Neural Network #################
+
+import torch
+from sklearn.datasets import make_circles
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+import torch.nn as nn
+import torch.optim as optim
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
+torch.__version__
+
+torch.manual_seed(111)
+
+# Device agnostic code
+device = "cuda" if torch.cuda.is_available() else "cpu"
+if device == "cuda":
+    print("Using CUDA (GPU)")
+else:
+    print("Using CPU")
+
+
+
+# Create a data for binary classification
+n_samples = 1000
+X, y = make_circles(n_samples, noise = 0.01) # For small noise, Adam works very well, as we increase noise, Adam fails.
+circle_data = pd.DataFrame({"X1": X[:,0], "X2": X[:,1], "label": y})
+
+# Plot the data
+plt.figure(figsize=(6,6))
+plt.scatter(circle_data[circle_data['label'] == 0]["X1"], circle_data[circle_data['label'] == 0]["X2"], c = plt.cm.RdYlBu(0), label = "Class 0", s = 2)
+plt.scatter(circle_data[circle_data['label'] == 1]["X1"], circle_data[circle_data['label'] == 1]["X2"], c = plt.cm.RdYlBu(255), label = "Class 1", s = 2)
+plt.xlabel("X1")
+plt.ylabel("X2")
+plt.title("Circle Data")
+plt.legend()
+plt.show()
+
+
+
+# Train Test Split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, shuffle = True, random_state = 111)
+
+# Turn the data into tensors
+X_train = torch.from_numpy(X_train).type(torch.float).to(device)
+X_test = torch.from_numpy(X_test).type(torch.float).to(device)
+y_train = torch.from_numpy(y_train).type(torch.float).to(device)
+y_test = torch.from_numpy(y_test).type(torch.float).to(device)
+
+
+
+# Custom Activation Functions
+
+class NormActivation(nn.Module):
+    def forward(self, x:torch.tensor) -> torch.tensor:
+        # Return a tensor, not float, and calculate norm per sample across dim 1
+        return torch.norm(x, dim=1, keepdim=True)
+
+
+# Construct model- added non-linear components: x^2
+class CircleModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        # Create 2 linear layers capable of handling the shapes of our circle data
+        self.layer1 = nn.Linear(in_features = 4, out_features = 32)
+        self.layer2 = nn.Linear(in_features = 32, out_features = 32)
+        self.layer3 = nn.Linear(in_features = 32, out_features = 32)
+        self.layer4 = nn.Linear(in_features = 32, out_features = 1)
+        self.norm_activation = NormActivation()
+
+
+    def forward(self, x_in):
+        # Calculate x0^2 and x1^2 for each sample in the batch as new features
+        x0_squared_feature = (x_in[:, 0]**2).unsqueeze(dim=1) # Shape (batch_size, 1)
+        x1_squared_feature = (x_in[:, 1]**2).unsqueeze(dim=1) # Shape (batch_size, 1)
+
+        # Concatenate original features with the new features (x0, x1, x0^2, x1^2)
+        augmented_x_in = torch.cat((x_in, x0_squared_feature, x1_squared_feature), dim=1) # Resulting shape will be (batch_size, 4)
+
+        x_out = self.layer4(
+            self.layer3(
+                self.layer2(
+                    self.layer1(
+                            augmented_x_in
+                            )
+                        )
+                    )
+                )
+
+        return x_out + self.norm_activation(x_in)
+
+
+# Instantiate model instance
+model1 = CircleModel()
+model1.to(device)
+next(model1.parameters()).device
+
+
+
+# Accuracy
+def accuracy(y_pred, y_true) -> float:
+    if len(y_pred) != len(y_true):
+        raise ValueError("Lengths of the input tensors must match")
+    correct = torch.eq(y_true, y_pred).sum().item()
+    return (correct/len(y_pred))*100
+
+# Optimizer & Loss Function
+criterion = optim.Adam(model1.parameters(), lr = 0.001) # SGD drastically fails here...
+loss_function = nn.BCEWithLogitsLoss()
+
+# Iterations
+epochs = 500
+epoch_count = []
+train_loss = []
+test_loss = []
+train_accuracy = []
+test_accuracy = []
+for epoch in range(epochs):
+    epoch_count.append(epoch)
+    model1.train()
+    y_pred_train_logits = model1(X_train).squeeze()
+    train_loss_value = loss_function(y_pred_train_logits, y_train)
+    train_loss.append(train_loss_value.item())
+    train_accuracy.append(accuracy(torch.where(torch.sigmoid(y_pred_train_logits)<0.5, 0, 1), y_train))
+    criterion.zero_grad()
+    train_loss_value.backward()
+    criterion.step()
+    model1.eval()
+    with torch.inference_mode():
+        y_pred_test_logits = model1(X_test).squeeze()
+        test_loss_value = loss_function(y_pred_test_logits, y_test)
+        test_loss.append(test_loss_value.item())
+        test_accuracy.append(accuracy(torch.where(torch.sigmoid(y_pred_test_logits)<0.5, 0, 1), y_test))
+
+final_output = torch.where(torch.sigmoid(y_pred_train_logits)< 0.5, 0, 1)
+
+print(f"After epoch {epoch_count[-1]+1}, Train accuracy: {train_accuracy[-1]}; Train loss: {train_loss[-1]}")
+print(f"After epoch {epoch_count[-1]+1}, Test accuracy: {test_accuracy[-1]}; Test loss: {test_loss[-1]}")
+
+
+# Plots
+plt.plot(epoch_count, train_loss, label = "Training Error")
+plt.plot(epoch_count, test_loss, label = "Testing Error")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.title("Train & Test Loss")
+plt.legend()
+plt.figure()
+plt.plot(epoch_count, train_accuracy, label = "Accuracy on Training Set")
+plt.plot(epoch_count, test_accuracy, label = "Accuracy on Testing Set")
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.title("Train & Test Accuracy")
+plt.legend()
+ConfusionMatrixDisplay(confusion_matrix(torch.where(torch.sigmoid(y_pred_train_logits)<0.5, 0, 1), y_train)).plot(cmap = "Blues")
+ConfusionMatrixDisplay(confusion_matrix(torch.where(torch.sigmoid(y_pred_test_logits)<0.5, 0, 1), y_test)).plot(cmap = "Reds")
+
+
+
+# Display Decision Boundary
+from pathlib import Path
+import requests
+
+# Download helper function from Learn Pytorch Repo, if not already downloaded
+if Path("helper_functions.py").is_file():
+    print("helper_functions.py already exists, skipping download")
+else:
+    print("Downloading helper_functions.py")
+    request = requests.get("https://raw.githubusercontent.com/mrdbourke/pytorch-deep-learning/main/helper_functions.py")
+    with open("helper_functions.py", "wb") as f:
+        f.write(request.content)
+from helper_functions import plot_predictions, plot_decision_boundary
+
+# Plot Decision Boundary on the Model 1
+plt.figure(figsize = (12, 6))
+plt.subplot(1, 2, 1)
+plt.title("Train on Model 1")
+plot_decision_boundary(model1, X_train, y_train)
+plt.subplot(1, 2, 2)
+plt.title("Test on Model 1")
+plot_decision_boundary(model1, X_test, y_test)
+
+
+
+
+#####################################################################
+
+activation_function = nn.ReLU()
+no_of_epochs = 200
+
+# Construct model- added ReLU as activation function in each layer.
+class CircleModel2(nn.Module):
+    def __init__(self):
+        super().__init__()
+        # Create 2 linear layers capable of handling the shapes of our circle data
+        self.layer1 = nn.Linear(in_features = 2, out_features = 32)
+        self.layer2 = nn.Linear(in_features = 32, out_features = 32)
+        self.layer3 = nn.Linear(in_features = 32, out_features = 32)
+        self.layer4 = nn.Linear(in_features = 32, out_features = 1)
+        self.activation = activation_function
+
+    def forward(self, x_in):
+        x_out = self.layer4(
+            self.activation(self.layer3(
+                self.activation(self.layer2(
+                    self.activation(self.layer1(
+                            x_in
+                            ))
+                        ))
+                    ))
+                )
+
+        return x_out
+
+
+
+
+# Instantiate model instance
+model2 = CircleModel2()
+model2.to(device)
+next(model2.parameters()).device
+
+
+# Optimizer & Loss Function
+criterion2 = optim.Adam(model2.parameters(), lr = 0.001)
+loss_function = nn.BCEWithLogitsLoss()
+
+# Iterations
+epochs = no_of_epochs
+epoch_count = []
+train_loss = []
+test_loss = []
+train_accuracy = []
+test_accuracy = []
+for epoch in range(epochs):
+    epoch_count.append(epoch)
+    model2.train()
+    y_pred_train_logits = model2(X_train).squeeze()
+    train_loss_value = loss_function(y_pred_train_logits, y_train)
+    train_loss.append(train_loss_value.item())
+    train_accuracy.append(accuracy(torch.where(torch.sigmoid(y_pred_train_logits)<0.5, 0, 1), y_train))
+    criterion2.zero_grad()
+    train_loss_value.backward()
+    criterion2.step()
+    model2.eval()
+    with torch.inference_mode():
+        y_pred_test_logits = model2(X_test).squeeze()
+        test_loss_value = loss_function(y_pred_test_logits, y_test)
+        test_loss.append(test_loss_value.item())
+        test_accuracy.append(accuracy(torch.where(torch.sigmoid(y_pred_test_logits)<0.5, 0, 1), y_test))
+
+final_output = torch.where(torch.sigmoid(y_pred_train_logits)< 0.5, 0, 1)
+
+print(f"After epoch {epoch_count[-1]+1}, Train accuracy: {train_accuracy[-1]}; Train loss: {train_loss[-1]}")
+print(f"After epoch {epoch_count[-1]+1}, Test accuracy: {test_accuracy[-1]}; Test loss: {test_loss[-1]}")
+
+
+# Plot Decision Boundary on the Model 2
+print(f"Using {activation_function} activation function, number of epochs: {no_of_epochs}")
+plt.figure(figsize = (12, 6))
+plt.subplot(1, 2, 1)
+plt.title("Train on Model 2")
+plot_decision_boundary(model2, X_train, y_train)
+plt.subplot(1, 2, 2)
+plt.title("Test on Model 2")
+plot_decision_boundary(model2, X_test, y_test)
+
+
+# Find the number of iterations at which we achieve zero train and test losses, in other words, the accuracies are 1.
+plt.figure()
+plt.plot(epoch_count, train_loss, label = "Training Error on Model 2")
+plt.plot(epoch_count, test_loss, label = "Testing Error on Model 2")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.title("Train & Test Loss on Model 2")
+plt.legend()
+plt.figure()
+plt.plot(epoch_count, train_accuracy, label = "Accuracy on Training Set on Model 2")
+plt.plot(epoch_count, test_accuracy, label = "Accuracy on Testing Set on Model 2")
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.title("Train & Test Accuracy on Model 2")
+plt.legend()
+
