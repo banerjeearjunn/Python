@@ -245,3 +245,98 @@ plt.show()
 ### **The Middle Zone (30 to 70):** The pink dots compress into a perfectly tight, horizontal line around -0.5. This means, a patient with ASTV value between 30 to 40 and Median value around 150-160 is not generally classified as Pathologic (Class 2). 
 ### **The High-Risk Zone (> 78):** The colors now group beautifully. The bright blue dots (low Median value) are clustered around +2.5 to +4.0. The dark purple/pink dots (High Median value) rise even higher, reaching +4.0 to +5.0. We can interpret this as: an ASTV over 78 is highly pathologic on its own, but if the patient also has a high Median value, the two risk factors combine inside the XGBoost trees to trigger the maximum possible risk penalty.
 
+
+### Let us see the (Pearson) correlation matrix to see if the automatic interaction selection really agrees with the true correlations between features.
+```
+correlation_matrix = X.corr(method = "pearson")
+```
+### mask the upper trianglular part of the correlation matrix
+```
+mask = np.triu(correlation_matrix, k = 0)
+```
+```
+plt.figure(figsize = (15, 15))
+sns.heatmap(correlation_matrix, annot = True, cmap = "coolwarm", mask = mask)
+plt.title("Dataset Feature Correlation Matrix Diagram", fontsize=14, pad=15)
+plt.tight_layout()
+plt.show()
+```
+<img width="1400" height="1490" alt="image" src="https://github.com/user-attachments/assets/d73d9cae-9fe6-40e7-bfb1-bd50c8a65db9" />
+
+
+### We observe that the correlation between MSTV and DP is 0.27 and that of MSTV and DL is 0.56, almost twice. But why did SHAP choose DP over DL? 
+### 
+
+### Also we notice that for some features, SHAP did pick a highly correlated feature as the dependent partner of some feature. For example, LB and Median are highly correlated (correlation = 0.79), and SHAP chooses LB to pair with Median and vice versa.  
+
+### Dependency Plot for MSTV with DP for Class 2
+```
+plt.figure(figsize=(10, 6))
+shap.plots.scatter(shap_values_class2[:, "MSTV"], color=shap_values_class2[:, "DP"], show=False)
+plt.title("SHAP Dependence Plot: MSTV colored by DP for Class 2", fontsize=14)
+plt.tight_layout()
+plt.show()
+```
+<img width="736" height="490" alt="image" src="https://github.com/user-attachments/assets/c5240694-102f-42d3-ab6d-e53f21c25031" />
+
+### Dependency Plot for MSTV with DL for Class 2
+```
+plt.figure(figsize=(10, 6))
+shap.plots.scatter(shap_values_class2[:, "MSTV"], color=shap_values_class2[:, "DL"], show=False)
+plt.title("SHAP Dependence Plot: MSTV colored by DL for Class 2", fontsize=14)
+plt.tight_layout()
+plt.show()
+```
+<img width="728" height="490" alt="image" src="https://github.com/user-attachments/assets/91ede4c5-43cb-45d0-bd5a-b07c805d2a17" />
+
+### **Let us understand how a decesion tree splits a criterion and how SHAP selects a pairing feature.**
+
+### 1. Splitting Criterion: Trees split by maximizing variance reduction or log-odds gain. If two features are highly correlated, they will compete for the same split. Whichever feature happens to give a tiny fraction more gain at that specific node wins the split.
+### 2. The "Masking" Effect (Feature Selection): Once the winning feature splits the data, it leaves very little residual error for its correlated twin to fix. The second feature gets "masked" or ignored in that part of the tree.
+### 3. Impact on Feature Importance: Because of this masking effect, standard tree-based feature importance (like Gini or weight) can be highly unstable. If we retrain the model with a different random seed, the model might choose the other correlated twin, causing their individual importance scores to flip wildly.
+
+### There are 4 cases two features can behave in a dataset:
+
+### Type 1. True Linear Redundancy (Like Mean and Median): Features like Mean and Median heart rate are highly correlated because they measure almost the exact same physical thing. If the model splits on Mean, splitting on Median right after adds zero predictive value. They don't interact; they just mirror each other. In these cases, SHAP will usually look for a different feature to color the plot.
+
+### Type 2. Co-occurring Clinical States (Like MSTV and ALTV): Sometimes, two features are highly correlated because they are caused by the same underlying clinical condition, but they mean completely different things to the tree. For example, when a fetus is in severe distress, both short-term variability (MSTV) and long-term variability (ALTV) might break down simultaneously. They are highly correlated in the data sheets because bad health drops both metrics. However, to the XGBoost tree, seeing a drop in both metrics is a much stronger confirmation of danger than seeing a drop in just one. The tree splits on one, and immediately uses the other to confirm or scale the final leaf weight (double confirmation). Because they frequently share nested branches, SHAP captures a massive interaction effect.
+
+### Type 3. In this scenario, Feature X1 and Feature X2 can have 0 correlation in the raw data, they look completely independent on the correlation matrix. However, they possess a massive interaction effect because one feature is useless without the other. For example, consider a specific drug treatment X1 and a specific genetic mutation X2. The drug has no effect on a normal patient, the mutation has no effect on a patient's health on its own. They do not correlate at all in the population. However, if a patient has the mutation and takes the drug, it triggers a catastrophic medical emergency. An XGBoost model will split on the drug X1, and immediately below it, split on the mutation X2 or vice versa. The final leaf weight will only trigger a massive risk score if both conditions are met. 
+
+### Type 4: This occurs when one feature changes the baseline context, altering how the model should interpret a second feature. The second feature might mean something completely different - or even invert its meaning - based on the first. For example, consider the features Accelerations (AC) and Baseline Fetal Heart Rate (LB). They are very weakly correlated (correlation = 0.081). However, from the Dependence plot of LB colored by AC, we see that, if a patient has a LB (baseline heart rate), say, >128, a sudden increase of AC (acceleration) (0.01) might be a sign of danger (Class 2/ Pathologic): SHAP value increases drastically from around -0.25 to 0.3. If the fetus has a low baseline heart rate (around 110-118), and if AC (acceleration) is near 0, the SHAP value drops to -1, so the model confidently classifies the case to be non-pathologic (not Class 2). So, high LB with high AC increases the SHAP value (risk of being Pathologic) and low LB with low AC decreases the SHAP value. If LB and AC were only correlated with a 3rd variable but didn't actually interact inside the tree (which is the case of Type 2), the dots on the dependence plot would not separate cleanly by color - a high AC value always would have produced a high or low SHAP value. 
+
+### Dependency Plot for LB colored by AC for Class 2
+```
+plt.figure(figsize=(10, 6))
+shap.plots.scatter(shap_values_class2[:, "LB"], color=shap_values_class2[:, "AC"], show=False)
+plt.title("SHAP Dependence Plot: LB colored by AC for Class 2", fontsize=14)
+plt.tight_layout()
+plt.show()
+```
+<img width="727" height="490" alt="image" src="https://github.com/user-attachments/assets/9b2a8827-c5f3-4e74-b89f-fab17e89e540" />
+
+
+### So the scenario of having high correlation between features X1 and X2 and for dependency plot, SHAP selects X2 as a dependent variable of X1, occurs when correlation and tree interaction happen to align perfectly, for example in the case of LB and Mean (correlation = 0.72) or LB and Median (correlation = 0.79).
+
+### Dependency Plot for Mean for Class 2
+```
+plt.figure(figsize=(10, 6))
+shap.plots.scatter(shap_values_class2[:, "Mean"], color=shap_values[:,:, 2], show=False)
+plt.title("SHAP Dependence Plot for Mean for Class 2", fontsize=14)
+plt.tight_layout()
+plt.show()
+```
+<img width="710" height="490" alt="image" src="https://github.com/user-attachments/assets/fec0b7ff-1376-46ff-8403-b422fa1b1b9c" />
+
+
+### Dependency Plot for Median for Class 2
+```
+plt.figure(figsize=(10, 6))
+shap.plots.scatter(shap_values_class2[:, "Median"], color=shap_values[:, :, 2], show=False)
+plt.title("SHAP Dependence Plot for Median for Class 2", fontsize=14)
+plt.tight_layout()
+plt.show()
+```
+<img width="712" height="490" alt="image" src="https://github.com/user-attachments/assets/cfdeacc1-ecb2-4f0d-86da-c4c41872a0e6" />
+
+
