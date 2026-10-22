@@ -343,6 +343,6 @@ plt.show()
 <img width="712" height="490" alt="image" src="https://github.com/user-attachments/assets/cfdeacc1-ecb2-4f0d-86da-c4c41872a0e6" />
 
 While Median provides a more stable and steady anchor for the risk distribution of the SHAP value.
-When the Median drops below 110, the risk score transitions much more gradually in a stair-step pattern +1.5 -> -0.5 -> -1.3.
+When the Median drops below 110, the risk score transitions much more gradually in a stair-step pattern.
 
 This is because Mean is highly sensitive to extreme outliers. If a patient has a brief, catastrophic drop in heart rate, the Mean will drop sharply. Median completely ignores extreme outliers, it only looks at the middle sorted number, it does not crash just because of a brief drop. It only moves down if the patient's heart rate stays low for a long and sustained period.
