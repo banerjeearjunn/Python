@@ -92,7 +92,7 @@ classes = ["Normal", "Suspect","Pathologic"]
 
 - The total length of a bar: represents the average size of the push (or impact) that feature had on the model's final prediction scores across all 426 patients in the entire test dataset; it answers the question: "how much did this medical measurement shift the final decision away from the default baseline guess?"
 - A long bar means he feature is powerful signal that the model relies on constantly to make its decisions.
-- A short bar (like DL or Nzeros) means t• he feature has almost no influence, even if we drastically change a patient's Nzeros value, it barely nudges the model's final prediction scores.
+- A short bar (like DL or Nzeros) means the feature has almost no influence, even if we drastically change a patient's Nzeros value, it barely nudges the model's final prediction scores.
 
 The bars are divided into three distinct segments or colors, one for each class: Class 0, Class 1, Class 2.
 A bar that is mostly one color tells us that feature is highly specialised.
